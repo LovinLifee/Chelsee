@@ -15,15 +15,6 @@
 			<p>Track your points and see available rewards!</p>
 			<div class="points-display" id="pointsDisplay"> 💝 Current Points: <span id="currentPoints">0</span>
 			</div>
-			<!-- <div class="config-section">
-                <h3>🔗 Google Sheets Configuration</h3>
-                <p>Enter your Google Sheets URL to load points and history:</p>
-                <input type="text" id="sheetsUrl" class="config-input" placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0">
-                <button class="config-btn" onclick="loadFromGoogleSheets()">📊 Load Data</button>
-                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
-                    💡 Make sure your Google Sheet is publicly viewable or shared with "Anyone with the link can view"
-                </p>
-            </div> -->
 			<!-- Navigation Tabs -->
 			<div class="nav-tabs">
 				<button class="nav-tab active" onclick="showPane('rewards')">🎁 Rewards</button>
@@ -35,25 +26,19 @@
 		<!-- Rewards Pane -->
 		<div class="section pane active" id="rewardsPane">
 			<h2>🎁 Available Rewards</h2>
-			<div id="rewardsContainer">
-				
-			</div>
+			<div id="rewardsContainer"></div>
 		</div>
 		<!-- Earning Methods Pane -->
 		<div class="section pane" id="earningPane">
 			<h2>⭐ Ways to Earn Points</h2>
-			<div id="earningContainer">
-				
-			</div>
+			<div id="earningContainer"></div>
 		</div>
 		<!-- Points History Pane -->
 		<div class="section pane" id="historyPane">
 			<h2>📊 Points History</h2>
-			<div id="pointsHistoryContainer">
-				
-			</div>
+			<div id="pointsHistoryContainer"></div>
 		</div>
-		<!-- Points History Pane -->
+		<!-- Terms of Service Pane -->
 		<div class="section pane" id="tosPane">
 			<h2>✍️ Terms of Service</h2>
 			<div id="tosContainer">
@@ -73,48 +58,72 @@
 		const card = document.createElement('div');
 		card.className = `card ${isAffordable ? 'affordable' : 'expensive'}`;
 		card.innerHTML = `
-                <div class="card-header">
-                    <div class="card-emoji">${reward.emoji}</div>
-                    <div class="card-title">${reward.title}</div>
-                </div>
-                <div class="card-points">💎 Cost: ${reward.cost} points</div>
-                <div class="card-description">${reward.description}</div>
-                <div class="status-badge ${isAffordable ? 'available' : 'unavailable'}">
-                    ${isAffordable ? '✅ Available' : '❌ Need more points'}
-                </div>
-            `;
+			<div class="card-header">
+				<div class="card-emoji">${reward.emoji}</div>
+				<div class="card-title">${reward.title}</div>
+			</div>
+			<div class="card-points">💎 Cost: ${reward.cost} points</div>
+			<div class="card-description">${reward.description}</div>
+			<div class="status-badge ${isAffordable ? 'available' : 'unavailable'}">
+				${isAffordable ? '✅ Available' : '❌ Need more points'}
+			</div>
+		`;
 		return card;
 	}
-	// Function to create earning method cards
+
 	function createEarningCard(method) {
 		const card = document.createElement('div');
 		card.className = 'card';
 		card.innerHTML = `
-                <div class="card-header">
-                    <div class="card-emoji">${method.emoji}</div>
-                    <div class="card-title">${method.title}</div>
-                </div>
-                <div class="card-points">💎 Earn: ${method.points} points</div>
-                <div class="card-description">${method.description}</div>
-                <div class="status-badge available">
-                    🌟 Ask Hayden to award points
-                </div>
-            `;
+			<div class="card-header">
+				<div class="card-emoji">${method.emoji}</div>
+				<div class="card-title">${method.title}</div>
+			</div>
+			<div class="card-points">💎 Earn: ${method.points} points</div>
+			<div class="card-description">${method.description}</div>
+			<div class="status-badge available">
+				🌟 Ask Hayden to award points
+			</div>
+		`;
 		return card;
 	}
-	// Function to update points display
+
+	function createHistoryCard(entry) {
+		const card = document.createElement('div');
+		card.className = 'card history-card';
+		const points = Number(entry.points);
+		const isGain = points > 0;
+		const sign = isGain ? '+' : '';
+		const colorClass = isGain ? 'gain' : 'spend';
+		const emoji = isGain ? '💖' : '🛍️';
+		let dateStr = '';
+		if (entry.date) {
+			const d = new Date(entry.date);
+			dateStr = isNaN(d.getTime()) ? entry.date : d.toLocaleString();
+		}
+		card.innerHTML = `
+			<div class="card-header">
+				<div class="card-emoji">${emoji}</div>
+				<div class="card-title">${entry.description || 'Points update'}</div>
+			</div>
+			<div class="card-points ${colorClass}">${sign}${points} points</div>
+			<div class="card-date">${dateStr}</div>
+		`;
+		return card;
+	}
+
 	function updatePointsDisplay() {
 		document.getElementById('currentPoints').textContent = currentPoints;
 		updateRewardAvailability();
 	}
-	// Function to update reward availability
+
 	function updateRewardAvailability() {
 		const rewardCards = document.querySelectorAll('#rewardsContainer .card');
 		rewardCards.forEach(card => {
 			const costText = card.querySelector('.card-points').textContent;
 			const cost = parseInt(costText.match(/\d+/)[0]);
 			const statusBadge = card.querySelector('.status-badge');
-			if(currentPoints >= cost) {
+			if (currentPoints >= cost) {
 				card.classList.add('affordable');
 				card.classList.remove('expensive');
 				statusBadge.className = 'status-badge available';
@@ -127,182 +136,135 @@
 			}
 		});
 	}
-	// Function to load rewards from markdown
-	async function loadRewards() {
-		try {
-			const rewardQuery = await getDataFromSheet("Catalogue!A2:D");
-			const values = rewardQuery.values;
-			const container = document.getElementById('rewardsContainer');
-			container.innerHTML = '';
-			if(values.length === 0) {
-				container.innerHTML = '<div class="error">⚠️ No rewards file found. Using sample data.</div>';
-			}
-			const grid = document.createElement('div');
-			grid.className = 'grid';
-			values.forEach(value => {
-				reward = {
-					emoji: value[0],
-					title: value[1],
-					description: value[2],
-					cost: value[3]
-				}
-				grid.appendChild(createRewardCard(reward));
-			});
-			container.appendChild(grid);
-		} catch (error) {
-			document.getElementById('rewardsContainer').innerHTML = '<div class="error">❌ Error loading rewards. Please check your rewards.md file.</div>';
-		}
-	}
-
-    function createHistoryCard(entry) {
-        const card = document.createElement('div');
-        card.className = 'card history-card';
-    
-        const isGain = entry.points > 0;
-        const sign = isGain ? '+' : '-';
-        const colorClass = isGain ? 'gain' : 'spend';
-    
-        card.innerHTML = `
-            <div class="card-header">
-                <div class="card-emoji">${entry.emoji || (isGain ? 'Reward 💖' : 'Purchase 🛍️')}</div>
-                <div class="card-title">${entry.title}</div>
-            </div>
-            <div class="card-points ${colorClass}">${sign}${Math.abs(entry.points)} points</div>
-            <div class="card-description">${entry.description || ''}</div>
-            <div class="card-date">${entry.date ? new Date(entry.date).toLocaleString() : ''}</div>
-        `;
-    
-    return card;
-}
-
-async function loadPointHistory() {
-    const pointHistory = await getDataFromSheet("Point Log!A2:C");
-	const values = pointHistory.values; 
-    values.forEach(entry => {
-        history = {
-            date: entry[0],
-            points: entry[1],
-            description: entry[2]
-        }
-		console.log(history);
-        addToHistory(history);
-    });
-}
-
-function addToHistory(entries) {
-    const container = document.getElementById('pointsHistoryContainer');
-    
-    let grid = container.querySelector('.grid');
-    if (!grid) {
-        grid = document.createElement('div');
-        grid.className = 'grid';
-        container.appendChild(grid);
-    }
-
-    grid.appendChild(createHistoryCard(entry));
-}
 
 	async function getDataFromSheet(query) {
-		googleSheetAPIKey = "AIzaSyDVcpmN7R_n79jFNNmzet0ODa6CryWkSlw";
+		const googleSheetAPIKey = "AIzaSyDVcpmN7R_n79jFNNmzet0ODa6CryWkSlw";
 		const sheetId = "1rkO4BiJHNvCHxViXLS55bQ45SAxjcAkqJ1gREUu6XgE";
-		const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${query}?key=${googleSheetAPIKey}`;
+		const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(query)}?key=${googleSheetAPIKey}`;
 		const response = await fetch(url);
 		const data = await response.json();
 		console.log(data);
 		return data;
 	}
 
-	function createHistoryCard(entry) {
-		const card = document.createElement('div');
-		card.className = 'card history-card';
-		const isGain = entry.points > 0;
-		const sign = isGain ? '+' : '-';
-		const colorClass = isGain ? 'gain' : 'spend';
-		card.innerHTML = `
-        <div class="card-header">
-            <div class="card-emoji">${entry.emoji || (isGain ? '💖' : '🛍️')}</div>
-            <div class="card-title">${entry.title}</div>
-        </div>
-        <div class="card-points ${colorClass}">${sign}${Math.abs(entry.points)} points</div>
-        <div class="card-description">${entry.description || ''}</div>
-        <div class="card-date">${entry.date ? new Date(entry.date).toLocaleString() : ''}</div>
-    `;
-		return card;
-	}
-	// Function to load earning methods from markdown
-	async function loadEarningMethods() {
+	async function loadRewards() {
 		try {
-			const methodsQuery = await getDataFromSheet("Ways To Earn!A2:D");
-			const values = methodsQuery.values;
-			const container = document.getElementById('earningContainer');
+			const rewardQuery = await getDataFromSheet("Catalogue!A2:D");
+			const values = rewardQuery.values || [];
+			const container = document.getElementById('rewardsContainer');
 			container.innerHTML = '';
-			if(values.length === 0) {
-				container.innerHTML = '<div class="error">⚠️ No earning methods file found. Using sample data.</div>';
+			if (values.length === 0) {
+				container.innerHTML = '<div class="error">⚠️ No rewards found.</div>';
+				return;
 			}
 			const grid = document.createElement('div');
 			grid.className = 'grid';
 			values.forEach(value => {
-				method = {
-					emoji: value[0],
-					title: value[1],
-					description: value[2],
-					points: value[3]
-				}
+				const reward = {
+					emoji: value[0] || '🎁',
+					title: value[1] || 'Reward',
+					description: value[2] || '',
+					cost: value[3] || 0
+				};
+				grid.appendChild(createRewardCard(reward));
+			});
+			container.appendChild(grid);
+		} catch (error) {
+			document.getElementById('rewardsContainer').innerHTML = '<div class="error">❌ Error loading rewards.</div>';
+		}
+	}
+
+	async function loadEarningMethods() {
+		try {
+			const methodsQuery = await getDataFromSheet("Ways To Earn!A2:D");
+			const values = methodsQuery.values || [];
+			const container = document.getElementById('earningContainer');
+			container.innerHTML = '';
+			if (values.length === 0) {
+				container.innerHTML = '<div class="error">⚠️ No earning methods found.</div>';
+				return;
+			}
+			const grid = document.createElement('div');
+			grid.className = 'grid';
+			values.forEach(value => {
+				const method = {
+					emoji: value[0] || '⭐',
+					title: value[1] || 'Activity',
+					description: value[2] || '',
+					points: value[3] || 0
+				};
 				grid.appendChild(createEarningCard(method));
 			});
 			container.appendChild(grid);
 		} catch (error) {
-			document.getElementById('earningContainer').innerHTML = '<div class="error">❌ Error loading earning methods. Please check your earning_methods.md file.</div>';
+			document.getElementById('earningContainer').innerHTML = '<div class="error">❌ Error loading earning methods.</div>';
 		}
 	}
-	// Function to simulate loading points from server
+
+	async function loadPointHistory() {
+		try {
+			const pointHistory = await getDataFromSheet("Point Log!A2:C");
+			const values = pointHistory.values || [];
+			const container = document.getElementById('pointsHistoryContainer');
+			container.innerHTML = '';
+
+			if (values.length === 0) {
+				container.innerHTML = '<div class="error">⚠️ No history yet.</div>';
+				return;
+			}
+
+			const grid = document.createElement('div');
+			grid.className = 'grid';
+
+			// Show most recent entries first
+			[...values].reverse().forEach(row => {
+				const entry = {
+					date: row[0] || '',
+					points: row[1] || 0,
+					description: row[2] || ''
+				};
+				grid.appendChild(createHistoryCard(entry));
+			});
+
+			container.appendChild(grid);
+		} catch (error) {
+			console.error('Error loading point history:', error);
+			document.getElementById('pointsHistoryContainer').innerHTML = '<div class="error">❌ Error loading history.</div>';
+		}
+	}
+
 	async function loadCurrentPoints() {
-		// Points will be loaded from Google Sheets instead
-		// This is now just a fallback for demo purposes
 		try {
 			const result = await getDataFromSheet("Point Log!E5");
 			currentPoints = Number(result.values[0][0]);
 			updatePointsDisplay();
 		} catch (error) {
 			console.error('Error loading points:', error);
-			document.getElementById('currentPoints').textContent = 'Error loading points';
+			document.getElementById('currentPoints').textContent = 'Error';
 		}
 	}
-	// Function to show specific pane
+
 	function showPane(paneId) {
-		// Hide all panes
-		document.querySelectorAll('.pane').forEach(pane => {
-			pane.classList.remove('active');
-		});
-		// Remove active class from all tabs
-		document.querySelectorAll('.nav-tab').forEach(tab => {
-			tab.classList.remove('active');
-		});
-		// Show selected pane
+		document.querySelectorAll('.pane').forEach(pane => pane.classList.remove('active'));
+		document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
 		document.getElementById(paneId + 'Pane').classList.add('active');
-		// Activate corresponding tab
 		const tabs = document.querySelectorAll('.nav-tab');
-		if(paneId === 'rewards') tabs[0].classList.add('active');
-		else if(paneId === 'earning') tabs[1].classList.add('active');
-		else if(paneId === 'history') tabs[2].classList.add('active');
+		if (paneId === 'rewards') tabs[0].classList.add('active');
+		else if (paneId === 'earning') tabs[1].classList.add('active');
+		else if (paneId === 'history') tabs[2].classList.add('active');
+		else if (paneId === 'tos') tabs[3].classList.add('active');
 	}
-	// Initialize the website
+
 	async function initialize() {
 		await Promise.all([
 			loadCurrentPoints(),
 			loadRewards(),
 			loadEarningMethods(),
-            loadPointHistory()
+			loadPointHistory()
 		]);
-        const exampleHistory = [
-    { title: 'Bought Chocolate 🍫', points: -50, description: 'Redeemed for a treat', date: '2025-08-30T15:00:00', emoji: '🍫' },
-    { title: 'Earned Points for Helping 🌟', points: 20, description: 'Helped with chores', date: '2025-08-29T12:00:00', emoji: '🌟' }
-];
-
-// Add them to the history pane
-addToHistory(exampleHistory);
 	}
-	// Add sparkle animation
+
+	// Sparkle animation
 	setInterval(() => {
 		const header = document.querySelector('.header');
 		const sparkle = document.createElement('div');
@@ -315,31 +277,24 @@ addToHistory(exampleHistory);
 		sparkle.style.animation = 'fadeInOut 2s ease-in-out';
 		header.style.position = 'relative';
 		header.appendChild(sparkle);
-		setTimeout(() => {
-			if(sparkle.parentNode) {
-				sparkle.parentNode.removeChild(sparkle);
-			}
-		}, 2000);
+		setTimeout(() => { if (sparkle.parentNode) sparkle.parentNode.removeChild(sparkle); }, 2000);
 	}, 3000);
-	// Add CSS animation for sparkles
+
 	const style = document.createElement('style');
 	style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: scale(0.5); }
-                50% { opacity: 1; transform: scale(1.2); }
-                100% { opacity: 0; transform: scale(0.5); }
-            }
-        `;
+		@keyframes fadeInOut {
+			0% { opacity: 0; transform: scale(0.5); }
+			50% { opacity: 1; transform: scale(1.2); }
+			100% { opacity: 0; transform: scale(0.5); }
+		}
+	`;
 	document.head.appendChild(style);
-	// Initialize when page loads
+
 	window.addEventListener('load', initialize);
-	// Example function for admin to update points (would be called by server)
-	function updatePoints(newPoints) {
+	window.updatePoints = function(newPoints) {
 		currentPoints = newPoints;
 		updatePointsDisplay();
-	}
-	// Make admin function available globally for testing
-	window.updatePoints = updatePoints;
+	};
 	</script>
 </body>
 
