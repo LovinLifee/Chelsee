@@ -140,8 +140,15 @@
 	async function getDataFromSheet(query) {
 		const googleSheetAPIKey = "AIzaSyDVcpmN7R_n79jFNNmzet0ODa6CryWkSlw";
 		const sheetId = "1rkO4BiJHNvCHxViXLS55bQ45SAxjcAkqJ1gREUu6XgE";
-		const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(query)}?key=${googleSheetAPIKey}`;
+		// Encode only the spaces, NOT the ! or : or letters — GSheets API expects the ! unencoded
+		const encodedQuery = query.replace(/ /g, '%20');
+		const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedQuery}?key=${googleSheetAPIKey}`;
 		const response = await fetch(url);
+		if (!response.ok) {
+			const err = await response.json();
+			console.error('Sheets API error:', err);
+			throw new Error(err.error?.message || 'Sheets API request failed');
+		}
 		const data = await response.json();
 		console.log(data);
 		return data;
